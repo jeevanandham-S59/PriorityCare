@@ -30,11 +30,19 @@ async def clean_database():
     await db.doctors.delete_many({})
     await db.departments.delete_many({})
     await db.priority_rules.delete_many({})
+    await db.patient_profiles.delete_many({})
+    await db.appointment_requests.delete_many({})
     
     yield
     
     # Clean up after tests
     await db.users.delete_many({})
+    await db.doctors.delete_many({})
+    await db.departments.delete_many({})
+    await db.priority_rules.delete_many({})
+    await db.patient_profiles.delete_many({})
+    await db.appointment_requests.delete_many({})
+    await db.appointment_notes.delete_many({})
     client.close()
 
 @pytest.fixture

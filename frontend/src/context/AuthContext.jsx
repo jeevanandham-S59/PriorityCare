@@ -41,14 +41,14 @@ export const AuthProvider = ({ children }) => {
     return role;
   };
 
-  const register = async (fullName, email, password, phone) => {
-    await axios.post('/api/auth/register', {
-      full_name: fullName,
-      email,
-      password,
-      phone
-    });
-  };
+  const register = async (fullName, email, phone, password) => {
+  await axios.post('/api/auth/register', {
+    full_name: fullName,
+    email,
+    phone,
+    password
+  });
+};
 
   const logout = () => {
     setToken(null);

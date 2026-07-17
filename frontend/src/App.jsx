@@ -8,6 +8,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
+import PatientProfile from './pages/PatientProfile';
+import NewAppointment from './pages/NewAppointment';
+import MyRequests from './pages/MyRequests';
+import RequestDetails from './pages/RequestDetails';
+import AdminRules from './pages/AdminRules';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -24,6 +29,21 @@ const Header = () => {
           </NavLink>
           {user ? (
             <>
+              {user.role === 'patient' && (
+                <>
+                  <NavLink to="/profile" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                    Profile
+                  </NavLink>
+                  <NavLink to="/my-requests" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                    My Requests
+                  </NavLink>
+                </>
+              )}
+              {user.role === 'admin' && (
+                <NavLink to="/admin/rules" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                  Triage Rules
+                </NavLink>
+              )}
               <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
                 Dashboard
               </NavLink>
@@ -63,6 +83,46 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute allowedRoles={['patient']}>
+                    <PatientProfile />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/appointments/new" 
+                element={
+                  <ProtectedRoute allowedRoles={['patient']}>
+                    <NewAppointment />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/my-requests" 
+                element={
+                  <ProtectedRoute allowedRoles={['patient']}>
+                    <MyRequests />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/appointments/:id" 
+                element={
+                  <ProtectedRoute>
+                    <RequestDetails />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/rules" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminRules />
                   </ProtectedRoute>
                 } 
               />
