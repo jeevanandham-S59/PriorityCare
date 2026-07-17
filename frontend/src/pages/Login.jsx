@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Card, Input, Button, AlertBanner } from '../components/ui';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -20,64 +21,59 @@ const Login = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.detail) {
-        setError(err.response.data.detail);
-      } else {
-        setError('Login failed. Please verify your credentials and try again.');
-      }
+      setError(err.response?.data?.detail || 'Login failed. Please verify your credentials and try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="card auth-card">
+    <Card className="auth-card">
       <h2 className="card-title">Portal Access</h2>
-      <p className="card-subtitle">Sign in to manage appointments & check triage status</p>
-      
-      {error && <div className="form-error">{error}</div>}
+      <p className="card-subtitle">Sign in to manage appointments and check triage status</p>
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label className="form-label">Email Address</label>
-          <input
-            type="email"
-            className="form-control"
-            placeholder="name@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={submitting}
-          />
-        </div>
+      {error && <AlertBanner variant="error">{error}</AlertBanner>}
 
-        <div className="form-group">
-          <label className="form-label">Password</label>
-          <input
-            type="password"
-            className="form-control"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={submitting}
-          />
-        </div>
-
-        <button 
-          type="submit" 
-          className="btn btn-primary" 
-          style={{ width: '100%', marginTop: '1rem' }}
+      <form onSubmit={handleSubmit} noValidate>
+        <Input
+          label="Email Address"
+          type="email"
+          placeholder="name@example.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
           disabled={submitting}
+          error={error && !email ? 'Email is required' : undefined}
+        />
+
+        <Input
+          label="Password"
+          type="password"
+          placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          required
+          disabled={submitting}
+        />
+
+        <Button
+          type="submit"
+          fullWidth
+          loading={submitting}
+          disabled={submitting}
+          style={{ marginTop: '0.5rem' }}
         >
-          {submitting ? 'Authenticating...' : 'Sign In'}
-        </button>
+          Sign In
+        </Button>
       </form>
 
       <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-        New patient? <Link to="/register" style={{ color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>Register here</Link>
+        New patient?{' '}
+        <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
+          Register here
+        </Link>
       </p>
-    </div>
+    </Card>
   );
 };
 

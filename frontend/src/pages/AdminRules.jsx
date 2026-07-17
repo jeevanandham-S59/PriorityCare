@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { PageHeader, Card, Input, Button, Badge, AlertBanner, Spinner } from '../components/ui';
 
 const AdminRules = () => {
   const { user } = useAuth();
@@ -12,12 +13,10 @@ const AdminRules = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Thresholds state
   const [criticalThreshold, setCriticalThreshold] = useState(70);
   const [highThreshold, setHighThreshold] = useState(50);
   const [mediumThreshold, setMediumThreshold] = useState(30);
 
-  // Weights state
   const [severityMultiplier, setSeverityMultiplier] = useState(4.0);
   const [acuteDays, setAcuteDays] = useState(1);
   const [acutePoints, setAcutePoints] = useState(15);
@@ -29,258 +28,157 @@ const AdminRules = () => {
   const [pregnancyPoints, setPregnancyPoints] = useState(10);
   const [urgentKeywordsPoints, setUrgentKeywordsPoints] = useState(15);
 
-  // Keywords state
   const [keywordsInput, setKeywordsInput] = useState('');
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      navigate('/');
-      return;
-    }
-
+    if (!user || user.role !== 'admin') { navigate('/'); return; }
     const fetchRules = async () => {
       try {
         const resp = await axios.get('/api/rules');
-        const rules = resp.data;
-        
-        // Thresholds
-        setCriticalThreshold(rules.thresholds.critical);
-        setHighThreshold(rules.thresholds.high);
-        setMediumThreshold(rules.thresholds.medium);
-
-        // Weights
-        setSeverityMultiplier(rules.weights.severity_multiplier);
-        setAcuteDays(rules.weights.duration.acute_days);
-        setAcutePoints(rules.weights.duration.acute_points);
-        setSubAcuteDays(rules.weights.duration.sub_acute_days);
-        setSubAcutePoints(rules.weights.duration.sub_acute_points);
-        setChronicPoints(rules.weights.duration.chronic_points);
-        setAgePoints(rules.weights.age_65_or_above);
-        setChronicConditionPoints(rules.weights.chronic_condition_present);
-        setPregnancyPoints(rules.weights.pregnancy);
-        setUrgentKeywordsPoints(rules.weights.urgent_keywords);
-
-        // Keywords
-        setKeywordsInput(rules.urgent_keywords.join(', '));
-      } catch (err) {
-        setError('Failed to fetch active priority rules.');
-      } finally {
-        setLoading(false);
-      }
+        const r = resp.data;
+        setCriticalThreshold(r.thresholds.critical);
+        setHighThreshold(r.thresholds.high);
+        setMediumThreshold(r.thresholds.medium);
+        setSeverityMultiplier(r.weights.severity_multiplier);
+        setAcuteDays(r.weights.duration.acute_days);
+        setAcutePoints(r.weights.duration.acute_points);
+        setSubAcuteDays(r.weights.duration.sub_acute_days);
+        setSubAcutePoints(r.weights.duration.sub_acute_points);
+        setChronicPoints(r.weights.duration.chronic_points);
+        setAgePoints(r.weights.age_65_or_above);
+        setChronicConditionPoints(r.weights.chronic_condition_present);
+        setPregnancyPoints(r.weights.pregnancy);
+        setUrgentKeywordsPoints(r.weights.urgent_keywords);
+        setKeywordsInput(r.urgent_keywords.join(', '));
+      } catch (err) { setError('Failed to fetch active priority rules.'); }
+      finally { setLoading(false); }
     };
-
     fetchRules();
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError(''); setSuccess('');
     setSubmitting(true);
-
-    const payload = {
-      thresholds: {
-        critical: parseInt(criticalThreshold),
-        high: parseInt(highThreshold),
-        medium: parseInt(mediumThreshold)
-      },
-      weights: {
-        severity_multiplier: parseFloat(severityMultiplier),
-        duration: {
-          acute_days: parseInt(acuteDays),
-          acute_points: parseInt(acutePoints),
-          sub_acute_days: parseInt(subAcuteDays),
-          sub_acute_points: parseInt(subAcutePoints),
-          chronic_points: parseInt(chronicPoints)
-        },
-        age_65_or_above: parseInt(agePoints),
-        chronic_condition_present: parseInt(chronicConditionPoints),
-        pregnancy: parseInt(pregnancyPoints),
-        urgent_keywords: parseInt(urgentKeywordsPoints)
-      },
-      urgent_keywords: keywordsInput.split(',').map(kw => kw.trim()).filter(Boolean)
-    };
-
     try {
-      await axios.put('/api/rules', payload);
-      setSuccess('Priority scoring rules updated successfully! Future appointment requests will use these weights.');
+      await axios.put('/api/rules', {
+        thresholds: { critical: parseInt(criticalThreshold), high: parseInt(highThreshold), medium: parseInt(mediumThreshold) },
+        weights: {
+          severity_multiplier: parseFloat(severityMultiplier),
+          duration: { acute_days: parseInt(acuteDays), acute_points: parseInt(acutePoints), sub_acute_days: parseInt(subAcuteDays), sub_acute_points: parseInt(subAcutePoints), chronic_points: parseInt(chronicPoints) },
+          age_65_or_above: parseInt(agePoints),
+          chronic_condition_present: parseInt(chronicConditionPoints),
+          pregnancy: parseInt(pregnancyPoints),
+          urgent_keywords: parseInt(urgentKeywordsPoints),
+        },
+        urgent_keywords: keywordsInput.split(',').map(kw => kw.trim()).filter(Boolean),
+      });
+      setSuccess('Priority scoring rules updated successfully!');
       window.scrollTo(0, 0);
     } catch (err) {
-      if (err.response?.data?.detail) {
-        const detail = err.response.data.detail;
-        setError(Array.isArray(detail) ? detail[0].msg : detail);
-      } else {
-        setError('Failed to save priority rules.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
+      const detail = err.response?.data?.detail;
+      setError(Array.isArray(detail) ? detail[0].msg : detail || 'Failed to save priority rules.');
+    } finally { setSubmitting(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-        <p style={{ color: 'var(--text-muted)' }}>Loading priority configurations...</p>
-      </div>
-    );
-  }
+  if (loading) return <Spinner text="Loading priority configurations..." />;
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ fontFamily: 'Outfit, sans-serif' }}>Manage Triage Rules</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Configure thresholds, factor weights, and urgent keywords dynamically.</p>
-        </div>
-        <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>← Dashboard</button>
-      </div>
+      <PageHeader
+        title="Manage Triage Rules"
+        subtitle="Configure thresholds, factor weights, and urgent keywords dynamically."
+        actions={<Button variant="secondary" onClick={() => navigate('/dashboard')}>{'\u2190'} Dashboard</Button>}
+      />
 
-      {error && <div className="form-error">{error}</div>}
-      {success && (
-        <div className="form-error" style={{ background: 'var(--primary-light)', border: '1px solid var(--primary)', color: '#d1fae5' }}>
-          {success}
-        </div>
-      )}
+      {error && <AlertBanner variant="error">{error}</AlertBanner>}
+      {success && <AlertBanner variant="success">{success}</AlertBanner>}
 
       <form onSubmit={handleSubmit}>
-        <div className="dashboard-grid">
-          {/* Left panel: Weights & Keywords */}
+        <div className="dashboard-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div className="card">
-              <h3 style={{ fontFamily: 'Outfit, sans-serif', marginBottom: '1.5rem' }}>Core Weights & Multipliers</h3>
-              
+            <Card>
+              <h3 style={{ fontFamily: "'Outfit', sans-serif", marginBottom: '1.5rem' }}>Core Weights & Multipliers</h3>
               <div className="form-group">
                 <label className="form-label">Symptom Severity Multiplier</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <input type="range" min="0" max="10" step="0.5" className="form-control" style={{ flex: 1, padding: 0 }}
                     value={severityMultiplier} onChange={e => setSeverityMultiplier(e.target.value)} disabled={submitting} />
-                  <span className="badge badge-medium" style={{ minWidth: '4rem', textAlign: 'center' }}>
-                    {severityMultiplier}x (max {Math.round(10 * severityMultiplier)} pts)
-                  </span>
+                  <Badge variant="Medium" style={{ minWidth: '4rem', textAlign: 'center' }}>
+                    {severityMultiplier}x
+                  </Badge>
                 </div>
-                <small style={{ color: 'var(--text-muted)' }}>Multiplies reported severity scale (1-10). Default is 4.0x (max 40 pts).</small>
+                <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
+                  Multiplies reported severity (1-10). Default 4.0x (max {Math.round(10 * severityMultiplier)} pts).
+                </small>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Age 65+ Score Bonus</label>
-                  <input type="number" className="form-control" min="0" max="100"
-                    value={agePoints} onChange={e => setAgePoints(e.target.value)} disabled={submitting} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Chronic Conditions Bonus</label>
-                  <input type="number" className="form-control" min="0" max="100"
-                    value={chronicConditionPoints} onChange={e => setChronicConditionPoints(e.target.value)} disabled={submitting} />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <Input label="Age 65+ Score Bonus" type="number" min="0" max="100" value={agePoints} onChange={e => setAgePoints(e.target.value)} disabled={submitting} />
+                <Input label="Chronic Conditions Bonus" type="number" min="0" max="100" value={chronicConditionPoints} onChange={e => setChronicConditionPoints(e.target.value)} disabled={submitting} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Pregnancy Status Bonus</label>
-                  <input type="number" className="form-control" min="0" max="100"
-                    value={pregnancyPoints} onChange={e => setPregnancyPoints(e.target.value)} disabled={submitting} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Urgent Keyword Match Bonus</label>
-                  <input type="number" className="form-control" min="0" max="100"
-                    value={urgentKeywordsPoints} onChange={e => setUrgentKeywordsPoints(e.target.value)} disabled={submitting} />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <Input label="Pregnancy Status Bonus" type="number" min="0" max="100" value={pregnancyPoints} onChange={e => setPregnancyPoints(e.target.value)} disabled={submitting} />
+                <Input label="Urgent Keyword Bonus" type="number" min="0" max="100" value={urgentKeywordsPoints} onChange={e => setUrgentKeywordsPoints(e.target.value)} disabled={submitting} />
               </div>
-            </div>
+            </Card>
 
-            <div className="card">
-              <h3 style={{ fontFamily: 'Outfit, sans-serif', marginBottom: '1.5rem' }}>Duration Score Rules</h3>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Acute Max Days</label>
-                  <input type="number" className="form-control" min="0"
-                    value={acuteDays} onChange={e => setAcuteDays(e.target.value)} disabled={submitting} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Acute Score Points</label>
-                  <input type="number" className="form-control" min="0" max="100"
-                    value={acutePoints} onChange={e => setAcutePoints(e.target.value)} disabled={submitting} />
-                </div>
+            <Card>
+              <h3 style={{ fontFamily: "'Outfit', sans-serif", marginBottom: '1.5rem' }}>Duration Score Rules</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <Input label="Acute Max Days" type="number" min="0" value={acuteDays} onChange={e => setAcuteDays(e.target.value)} disabled={submitting} />
+                <Input label="Acute Score Points" type="number" min="0" max="100" value={acutePoints} onChange={e => setAcutePoints(e.target.value)} disabled={submitting} />
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Sub-Acute Max Days</label>
-                  <input type="number" className="form-control" min="0"
-                    value={subAcuteDays} onChange={e => setSubAcuteDays(e.target.value)} disabled={submitting} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Sub-Acute Score Points</label>
-                  <input type="number" className="form-control" min="0" max="100"
-                    value={subAcutePoints} onChange={e => setSubAcutePoints(e.target.value)} disabled={submitting} />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <Input label="Sub-Acute Max Days" type="number" min="0" value={subAcuteDays} onChange={e => setSubAcuteDays(e.target.value)} disabled={submitting} />
+                <Input label="Sub-Acute Score Points" type="number" min="0" max="100" value={subAcutePoints} onChange={e => setSubAcutePoints(e.target.value)} disabled={submitting} />
               </div>
+              <Input label="Chronic Score Points" type="number" min="0" max="100" value={chronicPoints} onChange={e => setChronicPoints(e.target.value)} disabled={submitting} helperText="Any duration beyond sub-acute threshold" />
+            </Card>
 
-              <div className="form-group">
-                <label className="form-label">Chronic Score Points (any duration beyond Sub-Acute)</label>
-                <input type="number" className="form-control" min="0" max="100"
-                  value={chronicPoints} onChange={e => setChronicPoints(e.target.value)} disabled={submitting} />
-              </div>
-            </div>
-
-            <div className="card">
-              <h3 style={{ fontFamily: 'Outfit, sans-serif', marginBottom: '1rem' }}>Urgent Symptom Keywords</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                If a patient's symptoms text contains any of these comma-separated keywords (case-insensitive substring matching), the urgent keyword match bonus is added to their triage score.
+            <Card>
+              <h3 style={{ fontFamily: "'Outfit', sans-serif", marginBottom: '1rem' }}>Urgent Symptom Keywords</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                If symptoms contain any keyword (case-insensitive substring match), the urgent keyword bonus is added to the triage score.
               </p>
-              <div className="form-group">
-                <label className="form-label">Keywords List (comma separated)</label>
-                <textarea className="form-control" rows="4"
-                  value={keywordsInput} onChange={e => setKeywordsInput(e.target.value)} disabled={submitting}
-                  placeholder="e.g. chest pain, breathing, bleeding, unconscious" />
-              </div>
-            </div>
+              <Input type="textarea" rows={4} placeholder="e.g. chest pain, breathing, bleeding, unconscious"
+                value={keywordsInput} onChange={e => setKeywordsInput(e.target.value)} disabled={submitting}
+                label="Keywords (comma separated)" />
+            </Card>
           </div>
 
-          {/* Right panel: Threshold settings */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div className="card">
-              <h3 style={{ fontFamily: 'Outfit, sans-serif', marginBottom: '1.5rem' }}>Category Score Thresholds</h3>
-              
-              <div className="form-group">
-                <label className="form-label">Critical Tier (Min Score)</label>
-                <input type="number" className="form-control" min="0" max="100"
-                  value={criticalThreshold} onChange={e => setCriticalThreshold(e.target.value)} disabled={submitting} />
-                <span className="badge badge-critical" style={{ marginTop: '0.5rem' }}>Critical: {criticalThreshold} – 100</span>
-              </div>
+            <Card>
+              <h3 style={{ fontFamily: "'Outfit', sans-serif", marginBottom: '1.5rem' }}>Score Thresholds</h3>
+              <Input label="Critical Tier (Min Score)" type="number" min="0" max="100" value={criticalThreshold} onChange={e => setCriticalThreshold(e.target.value)} disabled={submitting} />
+              <div style={{ marginTop: '0.5rem' }}><Badge variant="Critical">Critical: {criticalThreshold} - 100</Badge></div>
 
-              <div className="form-group" style={{ marginTop: '1rem' }}>
-                <label className="form-label">High Tier (Min Score)</label>
-                <input type="number" className="form-control" min="0" max="100"
-                  value={highThreshold} onChange={e => setHighThreshold(e.target.value)} disabled={submitting} />
-                <span className="badge badge-high" style={{ marginTop: '0.5rem' }}>High: {highThreshold} – {criticalThreshold - 1}</span>
-              </div>
+              <Input label="High Tier (Min Score)" type="number" min="0" max="100" value={highThreshold} onChange={e => setHighThreshold(e.target.value)} disabled={submitting} style={{ marginTop: '1rem' }} />
+              <div style={{ marginTop: '0.5rem' }}><Badge variant="High">High: {highThreshold} - {criticalThreshold - 1}</Badge></div>
 
-              <div className="form-group" style={{ marginTop: '1rem' }}>
-                <label className="form-label">Medium Tier (Min Score)</label>
-                <input type="number" className="form-control" min="0" max="100"
-                  value={mediumThreshold} onChange={e => setMediumThreshold(e.target.value)} disabled={submitting} />
-                <span className="badge badge-medium" style={{ marginTop: '0.5rem' }}>Medium: {mediumThreshold} – {highThreshold - 1}</span>
-              </div>
+              <Input label="Medium Tier (Min Score)" type="number" min="0" max="100" value={mediumThreshold} onChange={e => setMediumThreshold(e.target.value)} disabled={submitting} style={{ marginTop: '1rem' }} />
+              <div style={{ marginTop: '0.5rem' }}><Badge variant="Medium">Medium: {mediumThreshold} - {highThreshold - 1}</Badge></div>
 
-              <div className="form-group" style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                  <span>Low Tier Range:</span>
-                  <span className="badge badge-low">Low: 0 – {mediumThreshold - 1}</span>
+              <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Low Tier:</span>
+                  <Badge variant="Low">Low: 0 - {mediumThreshold - 1}</Badge>
                 </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="card" style={{ background: 'rgba(16, 185, 129, 0.02)', borderColor: 'var(--primary-light)' }}>
-              <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}>💡 System Triage Advice</h4>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                These scoring weights directly modify the online appointment sorting algorithm. Please ensure thresholds map properly in ascending order: <code>Medium &lt; High &lt; Critical</code>.
+            <Card accent="primary" style={{ background: 'rgba(16, 185, 129, 0.02)' }}>
+              <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>
+                {'\uD83D\uDCA1'} System Advice
+              </h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                These scoring weights directly modify the online appointment sorting algorithm. Ensure thresholds are in ascending order: <code>Medium &lt; High &lt; Critical</code>.
               </p>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} disabled={submitting}>
-                {submitting ? 'Saving configurations...' : 'Save Triage Rules'}
-              </button>
-            </div>
+              <Button type="submit" fullWidth loading={submitting} disabled={submitting} style={{ marginTop: '1.5rem' }}>
+                Save Triage Rules
+              </Button>
+            </Card>
           </div>
         </div>
       </form>
